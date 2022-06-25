@@ -25,7 +25,7 @@ func runFunc(cmd *cobra.Command, args []string) {
 	// 使用linux提供的系统调用来修改该命令执行时的隔离级别
 	// 这里隔离UTS(hostname domainname)，PID
 	initCmd.SysProcAttr = &syscall.SysProcAttr{
-		Cloneflags: syscall.CLONE_NEWUTS | syscall.CLONE_NEWPID,
+		Cloneflags: syscall.CLONE_NEWUTS | syscall.CLONE_NEWPID | syscall.CLONE_NEWNS,
 	}
 	initCmd.Stdin = os.Stdin
 	initCmd.Stderr = os.Stderr
