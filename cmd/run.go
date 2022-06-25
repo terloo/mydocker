@@ -13,19 +13,24 @@ var runCmd = &cobra.Command{
 	Run: runFunc,
 }
 
-// mydocker run bash
+// mydocker run /bin/bash [其他参数]
+// run命令使用系统调用调用自身的init命令，来创建一个隔离进程
 func runFunc(cmd *cobra.Command, args []string) {
-	// 创建一个操作系统命令，此demo传入的命令为bash，方便观察
-	systemCmd := exec.Command(args[0])
+	// os.Args[0]为本命令，即mydocker
+	// init 为子命令
+	// args[1:]为其他参数
+	// 最终执行的命令为mydocker init /bin/bash [其他参数]
+	initArgs := append([]string{"init"}, args...)
+	initCmd := exec.Command(os.Args[0], initArgs...)
 	// 使用linux提供的系统调用来修改该命令执行时的隔离级别
-	// 这里隔离UTS(hostname domainname)
-	systemCmd.SysProcAttr = &syscall.SysProcAttr{
-		Cloneflags: syscall.CLONE_NEWUTS,
+	// 这里隔离UTS(hostname domainname)，PID
+	initCmd.SysProcAttr = &syscall.SysProcAttr{
+		Cloneflags: syscall.CLONE_NEWUTS | syscall.CLONE_NEWPID,
 	}
-	systemCmd.Stdin = os.Stdin
-	systemCmd.Stderr = os.Stderr
-	systemCmd.Stdout = os.Stdout
-	if err := systemCmd.Run(); err != nil {
+	initCmd.Stdin = os.Stdin
+	initCmd.Stderr = os.Stderr
+	initCmd.Stdout = os.Stdout
+	if err := initCmd.Run(); err != nil {
 		panic(err)
 	}
 }
