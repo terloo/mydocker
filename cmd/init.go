@@ -6,6 +6,7 @@ import (
 	"os/exec"
 	"syscall"
 
+	"github.com/google/uuid"
 	"github.com/spf13/cobra"
 )
 
@@ -17,10 +18,13 @@ var initCmd = &cobra.Command{
 // mydocker init /bin/bash [其他参数]
 // 此命令已在隔离环境中进行执行
 func initFunc(cmd *cobra.Command, args []string) {
+	// 容器id
+	containerID := generatUID()
 
 	// 将镜像和容器目录放在指定位置，每次启动容器时，将镜像里的文件拷贝到容器对应目录中
 	imageFolderPath := "./base"
-	rootFolderPath := "./rootfs"
+	// 使用容器id作为目录
+	rootFolderPath := containerID
 
 	// 如果容器目录不存在，则将镜像里的文件拷贝到容器目录
 	if _, err := os.Stat(rootFolderPath); os.IsNotExist(err) {
@@ -36,14 +40,14 @@ func initFunc(cmd *cobra.Command, args []string) {
 	}
 
 	// 改变当前进程所使用的根目录，此目录需要把容器执行命令的所需的文件拷贝进去
-	if err := syscall.Chroot("rootfs"); err != nil {
+	if err := syscall.Chroot(rootFolderPath); err != nil {
 		panic(err)
 	}
 	if err := syscall.Chdir("/"); err != nil {
 		panic(err)
 	}
 
-	// 挂载/proc，此时/proc会被挂载到rootfs中
+	// 挂载/proc，此时/proc会被挂载到容器目录中
 	if err := os.Mkdir("/proc", os.ModeDir); !os.IsExist(err) && err != nil {
 		panic(err)
 	}
@@ -67,13 +71,10 @@ func initFunc(cmd *cobra.Command, args []string) {
 		panic(err)
 	}
 
-	// TODO Exec后面的代码无法执行
-	fmt.Println("取消挂载")
-	// 命令执行结束后取消/proc的挂载
-	if err := syscall.Unmount("/proc", 0); err != nil {
-		panic(err)
-	}
+}
 
+func generatUID() string {
+	return uuid.New().String()
 }
 
 func CopyFileOrDirectory(srcFile, destFile string) error {

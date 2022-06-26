@@ -25,7 +25,26 @@ func runFunc(cmd *cobra.Command, args []string) {
 	// 使用linux提供的系统调用来修改该命令执行时的隔离级别
 	// 这里隔离UTS(hostname domainname)，PID
 	initCmd.SysProcAttr = &syscall.SysProcAttr{
-		Cloneflags: syscall.CLONE_NEWUTS | syscall.CLONE_NEWPID | syscall.CLONE_NEWNS,
+		Cloneflags: syscall.CLONE_NEWUTS | syscall.CLONE_NEWPID | syscall.CLONE_NEWNS | syscall.CLONE_NEWIPC | syscall.CLONE_NEWNET | syscall.CLONE_NEWUSER,
+		// 隔离USER时，需要指定映射配置  容器外的id->容器内的id
+		UidMappings: []syscall.SysProcIDMap{
+			{
+				// 容器内的用户id，0为root
+				ContainerID: 0,
+				// 容器外的用户id，获取当前用户id
+				HostID:      os.Getuid(),
+				Size:        1,
+			},
+		},
+		GidMappings: []syscall.SysProcIDMap{
+			{
+				// 容器内使用的gid，0为root组
+				ContainerID: 0,
+				// 容器外的组id，获取当前组id
+				HostID:      os.Getgid(),
+				Size:        1,
+			},
+		},
 	}
 	initCmd.Stdin = os.Stdin
 	initCmd.Stderr = os.Stderr
