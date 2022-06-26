@@ -30,7 +30,8 @@ func runFunc(cmd *cobra.Command, args []string) {
 	initCmd.Stdin = os.Stdin
 	initCmd.Stderr = os.Stderr
 	initCmd.Stdout = os.Stdout
-	if err := initCmd.Run(); err != nil {
+	if err := initCmd.Start(); err != nil {
 		panic(err)
 	}
+	initCmd.Wait()
 }
