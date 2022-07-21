@@ -5,10 +5,11 @@ import (
 )
 
 var RootCmd = &cobra.Command{
-	Use: "mydocker",
+	Use: "mydocker [Command]",
 }
 
 func init() {
 	RootCmd.AddCommand(runCmd)
 	RootCmd.AddCommand(initCmd)
+	// RootCmd.AddCommand(logsCmd)
 }

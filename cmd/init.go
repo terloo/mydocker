@@ -1,41 +1,47 @@
 package cmd
 
 import (
-	"fmt"
+	"math/rand"
 	"os"
 	"os/exec"
 	"syscall"
+	"time"
 
-	"github.com/google/uuid"
 	"github.com/spf13/cobra"
 )
 
+var (
+	MAX_CONTAINER_ID        = 32
+	IMAGE_FOLDER_PATH       = "/var/lib/docker/image/base"
+	ROOT_FOLDER_PATH_PREFEX = "/var/lib/docker/containers/"
+)
+
 var initCmd = &cobra.Command{
-	Use: "init",
-	Run: initFunc,
+	Use:   "init",
+	Short: "初始化容器，在隔离环境下运行。该命令由内部调用，对用户隐藏",
+	Run:   initFunc,
 }
 
 // mydocker init /bin/bash [其他参数]
-// 此命令已在隔离环境中进行执行
+// 此子命令已在隔离环境中进行执行
 func initFunc(cmd *cobra.Command, args []string) {
 	// 容器id
-	containerID := generatUID()
+	containerID := generatUID(MAX_CONTAINER_ID)
 
 	// 将镜像和容器目录放在指定位置，每次启动容器时，将镜像里的文件拷贝到容器对应目录中
-	imageFolderPath := "./base"
 	// 使用容器id作为目录
-	rootFolderPath := containerID
+	rootFolderPath := ROOT_FOLDER_PATH_PREFEX + containerID
 
 	// 如果容器目录不存在，则将镜像里的文件拷贝到容器目录
 	if _, err := os.Stat(rootFolderPath); os.IsNotExist(err) {
-		if err := CopyFileOrDirectory(imageFolderPath, rootFolderPath); err != nil {
+		if err := CopyFileOrDirectory(IMAGE_FOLDER_PATH, rootFolderPath); err != nil {
 			panic(err)
 		}
 	} else if err != nil {
 		panic(err)
 	}
 
-	if err := syscall.Sethostname([]byte("mycontainer")); err != nil {
+	if err := syscall.Sethostname([]byte(containerID)); err != nil {
 		panic(err)
 	}
 
@@ -59,7 +65,6 @@ func initFunc(cmd *cobra.Command, args []string) {
 
 	// 在隔离环境下搜索可执行文件的路径
 	cmdPath, err := exec.LookPath(args[0])
-	fmt.Println("执行命令:", cmdPath)
 	if err != nil {
 		panic(err)
 	}
@@ -73,8 +78,15 @@ func initFunc(cmd *cobra.Command, args []string) {
 
 }
 
-func generatUID() string {
-	return uuid.New().String()
+func generatUID(n int) string {
+	rand.Seed(time.Now().UnixNano())
+	const letters = "abcdefghijklmnopqrstuvwxyz0123456789"
+	b := make([]byte, n)
+	length := len(letters)
+	for i := range b {
+		b[i] = letters[rand.Intn(length)]
+	}
+	return string(b)
 }
 
 func CopyFileOrDirectory(srcFile, destFile string) error {
